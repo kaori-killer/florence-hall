@@ -116,7 +116,7 @@ EOF
 ```bash
 pnpm install
 pnpm dev
-# → http://localhost:3000
+# → http://localhost:3030
 ```
 
 ### 3. 테스트
