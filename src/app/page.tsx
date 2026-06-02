@@ -1,65 +1,60 @@
-import Image from "next/image";
+import Link from "next/link";
+import { listPerformances } from "@/domain/performances";
 
-export default function Home() {
+function formatKoreanDate(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default async function PerformancesPage() {
+  const performances = await listPerformances();
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <section className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold">상영 중인 공연</h1>
+        <p className="text-sm text-neutral-600 mt-1">
+          좌석을 선택하면 트랜잭션으로 즉시 예매됩니다.
+        </p>
+      </header>
+      <ul
+        className="grid gap-4 sm:grid-cols-2"
+        data-testid="performance-list"
+      >
+        {performances.map((p) => (
+          <li
+            key={p.id}
+            className="rounded-lg border bg-white p-4 hover:shadow-sm transition"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            <Link
+              href={`/performances/${p.id}`}
+              className="block space-y-2"
+              data-testid={`performance-card-${p.id}`}
+            >
+              <h2 className="font-medium">{p.title}</h2>
+              <p className="text-sm text-neutral-600">{p.artist}</p>
+              <p className="text-sm text-neutral-500">
+                {formatKoreanDate(p.performed_at)}
+              </p>
+              <div className="flex items-center justify-between pt-2 text-sm">
+                <span className="font-medium">
+                  ₩{p.price.toLocaleString("ko-KR")}
+                </span>
+                <span
+                  className="text-neutral-600"
+                  data-testid={`remaining-${p.id}`}
+                >
+                  잔여 {p.remaining} / {p.total_seats}
+                </span>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
