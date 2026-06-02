@@ -7,10 +7,12 @@ export class BookingConflictError extends Error {
   }
 }
 
+export type BookingStatus = "CONFIRMED" | "CANCELLED";
+
 export type Booking = {
   id: number;
   performance_id: number;
-  status: "CONFIRMED" | "CANCELLED";
+  status: BookingStatus;
   total_amount: number;
   created_at: string;
 };

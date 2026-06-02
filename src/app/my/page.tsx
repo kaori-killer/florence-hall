@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { listBookingsForUser } from "@/domain/bookings";
+import { listBookingsForUser, type BookingStatus } from "@/domain/bookings";
 import { formatKoreanDateTime } from "@/lib/format";
 import { getSession } from "@/lib/session";
 import { CancelButton } from "./CancelButton";
@@ -60,7 +60,7 @@ export default async function MyPage() {
   );
 }
 
-function StatusBadge({ status }: { status: "CONFIRMED" | "CANCELLED" }) {
+function StatusBadge({ status }: { status: BookingStatus }) {
   const label = status === "CONFIRMED" ? "예매 완료" : "취소됨";
   const cls =
     status === "CONFIRMED"
