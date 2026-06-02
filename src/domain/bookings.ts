@@ -41,29 +41,28 @@ export async function bookSeats(input: {
   if (input.seatIds.length === 0) throw new Error("좌석을 1개 이상 선택해야 합니다.");
 
   return withTransaction(async (client) => {
-    const lockedSeats = await client.query<{ id: number }>(
-      `SELECT id FROM seats
-        WHERE id = ANY($1::int[]) AND performance_id = $2
-        FOR UPDATE`,
+    const locked = await client.query<{
+      seat_id: number;
+      price: number;
+      booked_seat: number | null;
+    }>(
+      `SELECT s.id AS seat_id, p.price, bs.seat_id AS booked_seat
+         FROM seats s
+         JOIN performances p ON p.id = s.performance_id
+         LEFT JOIN booking_seats bs ON bs.seat_id = s.id
+        WHERE s.id = ANY($1::int[]) AND s.performance_id = $2
+        FOR UPDATE OF s`,
       [input.seatIds, input.performanceId],
     );
-    if (lockedSeats.rowCount !== input.seatIds.length) {
+    if (locked.rowCount !== input.seatIds.length) {
       throw new Error("유효하지 않은 좌석이 포함되어 있습니다.");
     }
+    const conflicts = locked.rows
+      .filter((r) => r.booked_seat !== null)
+      .map((r) => r.seat_id);
+    if (conflicts.length > 0) throw new BookingConflictError(conflicts);
 
-    const conflicts = await client.query<{ seat_id: number }>(
-      "SELECT seat_id FROM booking_seats WHERE seat_id = ANY($1::int[])",
-      [input.seatIds],
-    );
-    if (conflicts.rowCount && conflicts.rowCount > 0) {
-      throw new BookingConflictError(conflicts.rows.map((r) => r.seat_id));
-    }
-
-    const priceRow = await client.query<{ price: number }>(
-      "SELECT price FROM performances WHERE id = $1",
-      [input.performanceId],
-    );
-    const totalAmount = (priceRow.rows[0]?.price ?? 0) * input.seatIds.length;
+    const totalAmount = locked.rows[0].price * input.seatIds.length;
 
     const bookingRow = await client.query<{ id: number }>(
       `INSERT INTO bookings (user_id, performance_id, status, total_amount)
