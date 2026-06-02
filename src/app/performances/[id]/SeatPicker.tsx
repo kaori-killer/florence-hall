@@ -12,12 +12,12 @@ type Props = {
   isLoggedIn: boolean;
 };
 
-function groupBySection(seats: SeatWithStatus[]): Map<string, SeatWithStatus[]> {
-  const grouped = new Map<string, SeatWithStatus[]>();
-  for (const seat of seats) {
-    const list = grouped.get(seat.section) ?? [];
-    list.push(seat);
-    grouped.set(seat.section, list);
+function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const grouped = new Map<K, T[]>();
+  for (const item of items) {
+    const list = grouped.get(key(item)) ?? [];
+    list.push(item);
+    grouped.set(key(item), list);
   }
   return grouped;
 }
@@ -52,7 +52,7 @@ export function SeatPicker({
     });
   }
 
-  const sections = Array.from(groupBySection(seats).entries());
+  const sections = Array.from(groupBy(seats, (s) => s.section).entries());
   const total = pricePerSeat * selected.size;
 
   return (
@@ -115,12 +115,7 @@ function SeatSection({
   selected: Set<number>;
   onToggle: (seatId: number, isBooked: boolean) => void;
 }) {
-  const rows = new Map<string, SeatWithStatus[]>();
-  for (const seat of seats) {
-    const list = rows.get(seat.row_label) ?? [];
-    list.push(seat);
-    rows.set(seat.row_label, list);
-  }
+  const rows = groupBy(seats, (s) => s.row_label);
   return (
     <div className="rounded border bg-white p-3">
       <h3 className="text-sm font-medium mb-2">섹션 {section}</h3>
@@ -153,11 +148,17 @@ function SeatButton({
   onToggle: (seatId: number, isBooked: boolean) => void;
 }) {
   const base = "w-8 h-8 text-xs rounded border transition";
-  const cls = seat.is_booked
-    ? `${base} bg-neutral-200 text-neutral-400 cursor-not-allowed border-neutral-200`
+  const variantClass: Record<"booked" | "selected" | "available", string> = {
+    booked: "bg-neutral-200 text-neutral-400 cursor-not-allowed border-neutral-200",
+    selected: "bg-neutral-900 text-white border-neutral-900",
+    available: "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-900",
+  };
+  const variant = seat.is_booked
+    ? "booked"
     : isSelected
-      ? `${base} bg-neutral-900 text-white border-neutral-900`
-      : `${base} bg-white text-neutral-700 border-neutral-300 hover:border-neutral-900`;
+      ? "selected"
+      : "available";
+  const cls = `${base} ${variantClass[variant]}`;
   return (
     <button
       type="button"
