@@ -17,7 +17,7 @@ export function FormField({
 }: Props) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-neutral-700 mb-1">
+      <span className="block text-sm font-semibold text-foreground-2 mb-1.5">
         {label}
       </span>
       <input
@@ -26,7 +26,7 @@ export function FormField({
         required={required}
         autoComplete={autoComplete}
         defaultValue={defaultValue}
-        className="w-full rounded border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-900"
+        className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
       />
     </label>
   );
