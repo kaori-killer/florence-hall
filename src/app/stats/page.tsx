@@ -3,6 +3,7 @@ import {
   performanceOccupancy,
   topSpenders,
 } from "@/domain/stats";
+import { PageHeader } from "../components/PageHeader";
 
 export default async function StatsPage() {
   const [occupancy, spenders, daily] = await Promise.all([
@@ -13,13 +14,11 @@ export default async function StatsPage() {
 
   return (
     <section className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-semibold">통계</h1>
-        <p className="text-sm text-neutral-600 mt-1">
-          JOIN, GROUP BY, 집계 쿼리 데모.
-        </p>
-      </header>
-
+      <PageHeader
+        badge="STATS"
+        title="통계"
+        description="JOIN, GROUP BY, 집계 쿼리로 만든 운영 지표입니다."
+      />
       <OccupancyTable rows={occupancy} />
       <TopSpendersTable rows={spenders} />
       <DailyBookings rows={daily} />
@@ -42,25 +41,27 @@ function OccupancyTable({ rows }: { rows: OccupancyRow[] }) {
       description="LEFT JOIN seats / booking_seats + GROUP BY"
     >
       <table className="w-full text-sm" data-testid="occupancy-table">
-        <thead className="text-left text-neutral-500">
-          <tr>
-            <th className="py-2">공연</th>
-            <th>좌석</th>
-            <th>예매됨</th>
-            <th>점유율</th>
+        <thead>
+          <tr className="text-left text-xs font-semibold text-muted">
+            <th className="pb-3">공연</th>
+            <th className="pb-3">좌석</th>
+            <th className="pb-3">예매됨</th>
+            <th className="pb-3">점유율</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr
               key={r.performance_id}
-              className="border-t"
+              className="border-t border-line"
               data-testid={`occupancy-${r.performance_id}`}
             >
-              <td className="py-2">{r.title}</td>
-              <td>{r.total_seats}</td>
-              <td>{r.booked_seats}</td>
-              <td>{r.occupancy_pct ?? 0}%</td>
+              <td className="py-3 font-medium text-foreground">{r.title}</td>
+              <td className="py-3 text-foreground-2">{r.total_seats}</td>
+              <td className="py-3 text-foreground-2">{r.booked_seats}</td>
+              <td className="py-3 font-bold text-foreground">
+                {r.occupancy_pct ?? 0}%
+              </td>
             </tr>
           ))}
         </tbody>
@@ -83,22 +84,24 @@ function TopSpendersTable({ rows }: { rows: SpenderRow[] }) {
       description="users ⨯ bookings JOIN + SUM + ORDER BY LIMIT"
     >
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">아직 예매가 없습니다.</p>
+        <EmptyRow label="아직 예매가 없습니다." />
       ) : (
         <table className="w-full text-sm" data-testid="spenders-table">
-          <thead className="text-left text-neutral-500">
-            <tr>
-              <th className="py-2">사용자</th>
-              <th>예매 건수</th>
-              <th>총 결제액</th>
+          <thead>
+            <tr className="text-left text-xs font-semibold text-muted">
+              <th className="pb-3">사용자</th>
+              <th className="pb-3">예매 건수</th>
+              <th className="pb-3">총 결제액</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.user_id} className="border-t">
-                <td className="py-2">{r.name}</td>
-                <td>{r.booking_count}</td>
-                <td>₩{r.total_spent.toLocaleString("ko-KR")}</td>
+              <tr key={r.user_id} className="border-t border-line">
+                <td className="py-3 font-medium text-foreground">{r.name}</td>
+                <td className="py-3 text-foreground-2">{r.booking_count}</td>
+                <td className="py-3 font-bold text-foreground">
+                  ₩{r.total_spent.toLocaleString("ko-KR")}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -118,17 +121,22 @@ function DailyBookings({ rows }: { rows: DailyRow[] }) {
       description="date_trunc('day', created_at) + GROUP BY"
     >
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">데이터가 없습니다.</p>
+        <EmptyRow label="데이터가 없습니다." />
       ) : (
-        <ul className="space-y-1" data-testid="daily-bookings">
+        <ul className="space-y-2" data-testid="daily-bookings">
           {rows.map((r) => (
             <li key={r.day} className="flex items-center gap-3 text-sm">
-              <span className="w-24 text-neutral-500">{r.day}</span>
-              <span
-                className="inline-block h-3 rounded bg-neutral-900"
-                style={{ width: `${(r.booking_count / max) * 200}px` }}
-              />
-              <span>{r.booking_count}건</span>
+              <span className="w-24 font-medium text-foreground-2">{r.day}</span>
+              <span className="flex-1">
+                <span
+                  className="inline-block h-2 rounded-full bg-accent"
+                  style={{ width: `${(r.booking_count / max) * 100}%` }}
+                  aria-hidden
+                />
+              </span>
+              <span className="w-12 text-right font-bold text-foreground">
+                {r.booking_count}건
+              </span>
             </li>
           ))}
         </ul>
@@ -147,10 +155,14 @@ function StatsBlock({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-white p-4">
-      <h2 className="font-medium">{title}</h2>
-      <p className="text-xs text-neutral-500 mb-3">{description}</p>
-      {children}
+    <section className="rounded-2xl border border-line bg-surface p-6">
+      <h2 className="text-base font-bold text-foreground">{title}</h2>
+      <p className="mt-1 text-xs text-muted">{description}</p>
+      <div className="mt-4">{children}</div>
     </section>
   );
+}
+
+function EmptyRow({ label }: { label: string }) {
+  return <p className="text-sm text-muted">{label}</p>;
 }
