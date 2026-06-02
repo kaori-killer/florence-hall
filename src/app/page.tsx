@@ -1,15 +1,6 @@
 import Link from "next/link";
 import { listPerformances } from "@/domain/performances";
-
-function formatKoreanDate(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatKoreanDateTime } from "@/lib/format";
 
 export default async function PerformancesPage() {
   const performances = await listPerformances();
@@ -38,7 +29,7 @@ export default async function PerformancesPage() {
               <h2 className="font-medium">{p.title}</h2>
               <p className="text-sm text-neutral-600">{p.artist}</p>
               <p className="text-sm text-neutral-500">
-                {formatKoreanDate(p.performed_at)}
+                {formatKoreanDateTime(p.performed_at)}
               </p>
               <div className="flex items-center justify-between pt-2 text-sm">
                 <span className="font-medium">

@@ -1,18 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listBookingsForUser } from "@/domain/bookings";
+import { formatKoreanDateTime } from "@/lib/format";
 import { getSession } from "@/lib/session";
 import { CancelButton } from "./CancelButton";
-
-function formatKoreanDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default async function MyPage() {
   const session = await getSession();

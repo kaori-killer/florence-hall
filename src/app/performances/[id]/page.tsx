@@ -1,18 +1,9 @@
 import { notFound } from "next/navigation";
 import { getPerformance } from "@/domain/performances";
 import { listSeatsForPerformance } from "@/domain/seats";
+import { formatKoreanDateTime } from "@/lib/format";
 import { getSession } from "@/lib/session";
 import { SeatPicker } from "./SeatPicker";
-
-function formatKoreanDate(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default async function PerformancePage({
   params,
@@ -35,7 +26,7 @@ export default async function PerformancePage({
       <header>
         <h1 className="text-2xl font-semibold">{performance.title}</h1>
         <p className="text-sm text-neutral-600 mt-1">
-          {performance.artist} · {formatKoreanDate(performance.performed_at)}
+          {performance.artist} · {formatKoreanDateTime(performance.performed_at)}
         </p>
         <p className="text-sm text-neutral-700 mt-2">{performance.description}</p>
         <p className="text-sm mt-2">
