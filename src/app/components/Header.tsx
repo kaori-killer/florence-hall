@@ -5,40 +5,41 @@ import { logoutAction } from "../auth/actions";
 export async function Header() {
   const session = await getSession();
   return (
-    <header className="border-b bg-white">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="font-semibold tracking-tight">
-          Florence Hall
+    <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-white/80 backdrop-blur">
+      <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-semibold tracking-tight text-neutral-900"
+        >
+          <LogoMark />
+          <span>Florence Hall</span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/stats" className="text-neutral-600 hover:text-neutral-900">
-            통계
-          </Link>
+        <nav className="flex items-center gap-1 text-sm">
+          <NavLink href="/stats">통계</NavLink>
           {session ? (
             <>
-              <Link
-                href="/my"
-                className="text-neutral-600 hover:text-neutral-900"
+              <NavLink href="/my">내 예매</NavLink>
+              <span
+                className="ml-2 mr-1 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent"
+                data-testid="user-name"
               >
-                내 예매
-              </Link>
-              <span className="text-neutral-700" data-testid="user-name">
                 {session.name}
               </span>
               <form action={logoutAction}>
-                <button type="submit" className="text-neutral-600 hover:text-neutral-900">
+                <button
+                  type="submit"
+                  className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                >
                   로그아웃
                 </button>
               </form>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="text-neutral-600 hover:text-neutral-900">
-                로그인
-              </Link>
+              <NavLink href="/auth/login">로그인</NavLink>
               <Link
                 href="/auth/signup"
-                className="rounded bg-neutral-900 text-white px-3 py-1.5"
+                className="ml-1 inline-flex items-center rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-accent-hover"
               >
                 회원가입
               </Link>
@@ -47,5 +48,38 @@ export async function Header() {
         </nav>
       </div>
     </header>
+  );
+}
+
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function LogoMark() {
+  return (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-accent text-white">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="h-4 w-4"
+        aria-hidden="true"
+      >
+        <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Zm5 1.5a.75.75 0 0 0-1.5 0v7a.75.75 0 0 0 1.5 0v-7Z" />
+      </svg>
+    </span>
   );
 }
