@@ -25,7 +25,7 @@ export default function RootLayout({
         </main>
         <footer className="border-t border-neutral-200/70 bg-white/40 backdrop-blur">
           <div className="max-w-5xl mx-auto px-6 py-4 text-xs text-neutral-500">
-            Florence Hall · PostgreSQL 좌석 예매 데모
+            202101248 유소정
           </div>
         </footer>
       </body>
