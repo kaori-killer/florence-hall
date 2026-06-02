@@ -1,5 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { pool } from "@/lib/db";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   createPerformanceWithSeats,
   createUser,
@@ -14,10 +13,6 @@ import {
 
 beforeEach(async () => {
   await resetDb();
-});
-
-afterAll(async () => {
-  await pool.end();
 });
 
 describe("bookSeats", () => {
