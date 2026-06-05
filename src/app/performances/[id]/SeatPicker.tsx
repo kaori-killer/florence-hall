@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { bookSeatsAction, type BookingState } from "@/app/bookings/actions";
 import type { SeatWithStatus } from "@/domain/seats";
+import { seatKey, type SeatCoord } from "@/lib/venue";
 
 type Props = {
   performanceId: number;
@@ -29,7 +30,7 @@ export function SeatPicker({
   isLoggedIn,
 }: Props) {
   const router = useRouter();
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, formAction, pending] = useActionState<BookingState, FormData>(
     async (prev, formData) => {
       const result = await bookSeatsAction(prev, formData);
@@ -42,24 +43,37 @@ export function SeatPicker({
     {},
   );
 
-  function toggle(seatId: number, isBooked: boolean) {
-    if (isBooked) return;
+  function toggle(seat: SeatWithStatus) {
+    if (seat.is_booked) return;
+    const key = seatKey(seat);
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(seatId)) next.delete(seatId);
-      else next.add(seatId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
 
+  const selectedSeats: SeatCoord[] = seats.filter((s) =>
+    selected.has(seatKey(s)),
+  );
   const sections = Array.from(groupBy(seats, (s) => s.section).entries());
-  const total = pricePerSeat * selected.size;
+  const total = pricePerSeat * selectedSeats.length;
 
   return (
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="performanceId" value={performanceId} />
-      {Array.from(selected).map((id) => (
-        <input key={id} type="hidden" name="seatIds" value={id} />
+      {selectedSeats.map((seat) => (
+        <input
+          key={seatKey(seat)}
+          type="hidden"
+          name="seats"
+          value={JSON.stringify({
+            section: seat.section,
+            row_label: seat.row_label,
+            seat_number: seat.seat_number,
+          })}
+        />
       ))}
 
       <section
@@ -88,13 +102,13 @@ export function SeatPicker({
       </section>
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">
-        {selected.size === 0
+        {selectedSeats.length === 0
           ? "선택된 좌석이 없습니다."
-          : `${selected.size}석 선택, 합계 ${total.toLocaleString("ko-KR")}원.`}
+          : `${selectedSeats.length}석 선택, 합계 ${total.toLocaleString("ko-KR")}원.`}
       </p>
 
       <SummaryBar
-        count={selected.size}
+        count={selectedSeats.length}
         total={total}
         pending={pending}
         isLoggedIn={isLoggedIn}
@@ -126,8 +140,8 @@ function SeatSection({
 }: {
   section: string;
   seats: SeatWithStatus[];
-  selected: Set<number>;
-  onToggle: (seatId: number, isBooked: boolean) => void;
+  selected: Set<string>;
+  onToggle: (seat: SeatWithStatus) => void;
 }) {
   const rows = groupBy(seats, (s) => s.row_label);
   return (
@@ -143,9 +157,9 @@ function SeatSection({
             </span>
             {rowSeats.map((seat) => (
               <SeatButton
-                key={seat.id}
+                key={seatKey(seat)}
                 seat={seat}
-                isSelected={selected.has(seat.id)}
+                isSelected={selected.has(seatKey(seat))}
                 onToggle={onToggle}
               />
             ))}
@@ -163,15 +177,13 @@ function SeatButton({
 }: {
   seat: SeatWithStatus;
   isSelected: boolean;
-  onToggle: (seatId: number, isBooked: boolean) => void;
+  onToggle: (seat: SeatWithStatus) => void;
 }) {
   const base =
     "h-9 w-9 rounded-lg text-xs font-semibold transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
   const variantClass: Record<"booked" | "selected" | "available", string> = {
-    booked:
-      "cursor-not-allowed border border-line bg-line text-muted",
-    selected:
-      "border border-accent bg-accent text-white",
+    booked: "cursor-not-allowed border border-line bg-line text-muted",
+    selected: "border border-accent bg-accent text-white",
     available:
       "border border-line bg-surface text-foreground-2 hover:border-accent hover:text-accent",
   };
@@ -181,16 +193,16 @@ function SeatButton({
       ? "selected"
       : "available";
   const status = seat.is_booked ? " (예매됨)" : isSelected ? " (선택됨)" : "";
+  const testId = `seat-${seatKey(seat)}`;
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
-    const key = event.key;
     const directions: Record<string, "next" | "prev"> = {
       ArrowRight: "next",
       ArrowDown: "next",
       ArrowLeft: "prev",
       ArrowUp: "prev",
     };
-    const direction = directions[key];
+    const direction = directions[event.key];
     if (!direction) return;
     event.preventDefault();
     const focusables = Array.from(
@@ -210,11 +222,11 @@ function SeatButton({
   return (
     <button
       type="button"
-      onClick={() => onToggle(seat.id, seat.is_booked)}
+      onClick={() => onToggle(seat)}
       onKeyDown={handleKeyDown}
       disabled={seat.is_booked}
       aria-pressed={!seat.is_booked && isSelected}
-      data-testid={`seat-${seat.id}`}
+      data-testid={testId}
       data-section={seat.section}
       data-row={seat.row_label}
       data-number={seat.seat_number}

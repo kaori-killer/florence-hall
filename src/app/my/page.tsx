@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  listBookingsForUser,
+  listBookingGroupsForUser,
+  type BookingGroup,
   type BookingStatus,
-  type BookingWithDetails,
 } from "@/domain/bookings";
 import { formatKoreanDateTime } from "@/lib/format";
 import { getSession } from "@/lib/session";
+import { Badge } from "../components/Badge";
 import { PageHeader } from "../components/PageHeader";
 import { CancelButton } from "./CancelButton";
 
@@ -14,7 +15,7 @@ export default async function MyPage() {
   const session = await getSession();
   if (!session) redirect("/auth/login");
 
-  const bookings = await listBookingsForUser(session.userId);
+  const groups = await listBookingGroupsForUser(session.userId);
 
   return (
     <section className="space-y-8">
@@ -24,13 +25,13 @@ export default async function MyPage() {
         description={`${session.name}님이 진행한 예매 내역입니다.`}
       />
 
-      {bookings.length === 0 ? (
+      {groups.length === 0 ? (
         <EmptyState />
       ) : (
         <ul className="space-y-3" data-testid="my-bookings">
-          {bookings.map((b) => (
-            <li key={b.id}>
-              <BookingItem booking={b} />
+          {groups.map((g) => (
+            <li key={g.booking_group_id}>
+              <BookingItem group={g} />
             </li>
           ))}
         </ul>
@@ -39,37 +40,37 @@ export default async function MyPage() {
   );
 }
 
-function BookingItem({ booking }: { booking: BookingWithDetails }) {
+function BookingItem({ group }: { group: BookingGroup }) {
   return (
     <article
-      data-testid={`booking-${booking.id}`}
-      data-status={booking.status}
+      data-testid={`booking-${group.booking_group_id}`}
+      data-status={group.status}
       className="rounded-2xl border border-line bg-surface p-5 sm:p-6"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <h2 className="text-base font-bold tracking-tight text-foreground">
-            {booking.title}
+            {group.title}
           </h2>
           <p className="text-sm text-foreground-2">
-            {booking.artist} · {formatKoreanDateTime(booking.performed_at)}
+            {group.artist} · {formatKoreanDateTime(group.performed_at)}
           </p>
           <p className="text-sm text-foreground-2">
             좌석{" "}
             <span className="font-medium text-foreground">
-              {booking.seats
+              {group.seats
                 .map((s) => `${s.section}${s.row_label}-${s.seat_number}`)
-                .join(", ") || "(취소됨)"}
+                .join(", ")}
             </span>
           </p>
           <p className="text-sm font-bold text-foreground">
-            ₩{booking.total_amount.toLocaleString("ko-KR")}
+            ₩{group.total_amount.toLocaleString("ko-KR")}
           </p>
         </div>
         <div className="flex flex-row items-center gap-2 sm:flex-col sm:items-end">
-          <StatusBadge status={booking.status} />
-          {booking.status === "CONFIRMED" && (
-            <CancelButton bookingId={booking.id} />
+          <StatusBadge status={group.status} />
+          {group.status === "CONFIRMED" && (
+            <CancelButton bookingGroupId={group.booking_group_id} />
           )}
         </div>
       </div>
@@ -78,22 +79,8 @@ function BookingItem({ booking }: { booking: BookingWithDetails }) {
 }
 
 function StatusBadge({ status }: { status: BookingStatus }) {
-  const config: Record<BookingStatus, { label: string; cls: string }> = {
-    CONFIRMED: {
-      label: "예매 완료",
-      cls: "bg-accent-soft text-accent",
-    },
-    CANCELLED: {
-      label: "취소됨",
-      cls: "bg-background text-muted",
-    },
-  };
-  const { label, cls } = config[status];
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>
-      {label}
-    </span>
-  );
+  if (status === "CONFIRMED") return <Badge variant="accent">예매 완료</Badge>;
+  return <Badge variant="muted">취소됨</Badge>;
 }
 
 function EmptyState() {
