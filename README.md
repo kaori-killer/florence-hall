@@ -40,44 +40,55 @@ e2e/
 
 ## 데이터 모델
 
-5개의 릴레이션과 외래 키 / `UNIQUE` 제약으로 구성.
+**3개의 릴레이션**과 외래 키 / partial UNIQUE 인덱스로 구성한다. 좌석 마스터를 별도 테이블로 두지 않고, 좌석 정보를 `bookings` 행에 직접 담아 관리한다.
 
 ```
-users           (id, email UNIQUE, name, password_hash, created_at)
-performances    (id, title, artist, performed_at, price, description)
-seats           (id, performance_id→performances, section, row_label, seat_number,
-                 UNIQUE(performance_id, section, row_label, seat_number))
-bookings        (id, user_id→users, performance_id→performances,
-                 status ∈ {CONFIRMED, CANCELLED}, total_amount, created_at)
-booking_seats   (booking_id→bookings, seat_id→seats UNIQUE,
-                 PRIMARY KEY(booking_id, seat_id))
+users         (id, email UNIQUE, name, password_hash, created_at)
+
+performances  (id, title, artist, performed_at, price, description, image_url)
+
+bookings      (id, booking_group_id, user_id→users, performance_id→performances,
+               section, row_label, seat_number,
+               status ∈ {CONFIRMED, CANCELLED},
+               price_paid, created_at)
+
+  -- 활성 예매에서만 좌석 점유를 강제하는 partial UNIQUE 인덱스
+  UNIQUE (performance_id, section, row_label, seat_number) WHERE status = 'CONFIRMED'
 ```
 
-- `booking_seats.seat_id UNIQUE` 가 "같은 좌석은 동시에 한 명만 점유" 라는 도메인 규칙을 DB 레벨에서 강제한다.
-- 취소 시 `booking_seats` 행을 삭제하고 `bookings.status = CANCELLED` 로 표시. 좌석은 다시 예매 가능해진다.
+- **좌석 배치는 코드 상수**(`src/lib/venue.ts`)에 정의 — 모든 공연이 A·B 섹션 × 3행 × 5번씩 총 30석. DB 테이블을 줄여 도메인을 단순화했다.
+- **partial UNIQUE 인덱스**가 "같은 좌석은 동시에 한 명만 점유" 규칙을 DB 레벨에서 강제한다. 취소된 행(CANCELLED)은 인덱스 대상에서 빠지므로 좌석이 자동으로 다시 풀린다.
+- 한 번에 여러 좌석을 예매하면 같은 `booking_group_id` 를 공유한다 — 마이페이지에서는 그룹 단위로 묶어 보여주고, 취소도 그룹 단위로 처리.
 
 ## 핵심 트랜잭션 — 좌석 예매
 
-`src/domain/bookings.ts`. 한 트랜잭션 안에서 잠금 + 검증 + 가격 조회를 단일 JOIN으로 끝낸다.
+`src/domain/bookings.ts`. 한 트랜잭션 안에서 잠금·충돌 검사·그룹 ID 발급·다중 행 INSERT를 끝낸다.
 
 ```sql
 BEGIN;
-  -- 1) 선택한 좌석을 잠그면서 점유 여부와 가격을 한꺼번에 가져온다
-  SELECT s.id, p.price, bs.seat_id AS booked_seat
-    FROM seats s
-    JOIN performances p ON p.id = s.performance_id
-    LEFT JOIN booking_seats bs ON bs.seat_id = s.id
-   WHERE s.id = ANY($1) AND s.performance_id = $2
-   FOR UPDATE OF s;
-  -- → booked_seat 가 하나라도 NOT NULL 이면 ROLLBACK (BookingConflictError)
+  -- 1) 가격 조회
+  SELECT price FROM performances WHERE id = $performanceId;
 
-  -- 2) 예매와 좌석 매핑을 기록
-  INSERT INTO bookings (user_id, performance_id, status, total_amount) VALUES (...);
-  INSERT INTO booking_seats (booking_id, seat_id) SELECT ..., UNNEST($seatIds);
+  -- 2) 같은 공연의 활성 예매를 잠근다 (FOR UPDATE).
+  --    잠금이 없으면 두 트랜잭션이 동시에 partial UNIQUE 통과를 시도해 한쪽이 늦게 실패하는 경합이 생긴다.
+  SELECT section, row_label, seat_number
+    FROM bookings
+   WHERE performance_id = $performanceId AND status = 'CONFIRMED'
+   FOR UPDATE;
+  -- → 선택한 좌석 중 이미 활성으로 잡힌 게 있으면 BookingConflictError 로 ROLLBACK
+
+  -- 3) booking_group_id 발급
+  SELECT nextval('booking_group_id_seq');
+
+  -- 4) 좌석마다 한 행씩 INSERT (모두 같은 group_id)
+  INSERT INTO bookings (booking_group_id, user_id, performance_id,
+                        section, row_label, seat_number, price_paid)
+       SELECT $gid, $userId, $performanceId, s.section, s.row_label, s.seat_number, $price
+         FROM UNNEST($sections, $rows, $numbers) AS s(section, row_label, seat_number);
 COMMIT;
 ```
 
-`SELECT ... FOR UPDATE` 가 두 번째 동시 트랜잭션을 대기시키고, 첫 트랜잭션이 커밋되면 두 번째 트랜잭션은 `booked_seat`이 NOT NULL인 좌석을 발견해 충돌로 `ROLLBACK` 한다. `booking_seats.seat_id` 의 `UNIQUE` 제약이 어떤 경로로든 중복이 들어오는 걸 막아주는 안전망이다.
+`SELECT ... FOR UPDATE` 가 두 번째 동시 트랜잭션을 대기시키고, 첫 트랜잭션이 커밋되면 두 번째 트랜잭션은 이미 잡힌 좌석을 발견해 `BookingConflictError` 로 `ROLLBACK` 한다. partial UNIQUE 인덱스가 어떤 경로로든 중복이 들어오는 걸 막아주는 안전망이다.
 
 이 동시성 보장은 단순한 텍스트 설명이 아니라 통합 테스트로 직접 검증된다 — `src/domain/bookings.test.ts` 의 *"두 사용자가 동시에 같은 좌석을 잡으면 한쪽만 성공한다"* 케이스가 `Promise.allSettled`로 두 트랜잭션을 동시에 실행해 하나는 성공, 하나는 실패하는지 확인한다.
 
