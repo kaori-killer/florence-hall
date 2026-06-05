@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   listPerformances,
@@ -38,9 +39,14 @@ function PerformanceCard({ performance }: { performance: PerformanceWithRemainin
     <Link
       href={`/performances/${performance.id}`}
       data-testid={`performance-card-${performance.id}`}
-      className="group block rounded-2xl border border-line bg-surface p-6 transition hover:border-accent/40"
+      className="group block overflow-hidden rounded-2xl border border-line bg-surface transition hover:border-accent/40 hover:-translate-y-0.5"
     >
-      <div className="space-y-4">
+      <PerformanceCover
+        src={performance.image_url}
+        title={performance.title}
+        soldOut={soldOut}
+      />
+      <div className="space-y-4 p-5">
         <div className="space-y-1">
           <p className="text-xs font-semibold text-accent">
             {formatKoreanDateTime(performance.performed_at)}
@@ -73,17 +79,46 @@ function PerformanceCard({ performance }: { performance: PerformanceWithRemainin
           <span className="text-xl font-bold text-foreground">
             ₩{performance.price.toLocaleString("ko-KR")}
           </span>
-          {soldOut ? (
-            <span className="rounded-full bg-line px-3 py-1 text-xs font-semibold text-muted">
-              매진
-            </span>
-          ) : (
-            <span className="text-sm font-semibold text-accent transition group-hover:translate-x-0.5">
-              좌석 보기 →
-            </span>
-          )}
+          <span className="text-sm font-semibold text-accent transition group-hover:translate-x-0.5">
+            좌석 보기 →
+          </span>
         </div>
       </div>
     </Link>
+  );
+}
+
+function PerformanceCover({
+  src,
+  title,
+  soldOut,
+}: {
+  src: string | null;
+  title: string;
+  soldOut: boolean;
+}) {
+  return (
+    <div className="relative aspect-[16/9] w-full overflow-hidden bg-background">
+      {src ? (
+        <Image
+          src={src}
+          alt=""
+          fill
+          sizes="(min-width: 640px) 50vw, 100vw"
+          className="object-cover transition duration-500 group-hover:scale-[1.03]"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-xs text-muted">
+          {title}
+        </div>
+      )}
+      {soldOut && (
+        <div className="absolute inset-0 flex items-center justify-center bg-foreground/50">
+          <span className="rounded-full bg-surface px-4 py-1.5 text-xs font-bold text-foreground">
+            매진
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
