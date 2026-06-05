@@ -1,18 +1,15 @@
 import Link from "next/link";
+import { PageHeader } from "../../components/PageHeader";
 import { AuthForm } from "../AuthForm";
 import { signupAction } from "../actions";
 
 export default function SignupPage() {
   return (
     <section className="mx-auto max-w-md space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-[28px] font-bold tracking-tight text-foreground">
-          회원가입
-        </h1>
-        <p className="text-sm text-foreground-2">
-          비밀번호는 8자 이상으로 입력해 주세요.
-        </p>
-      </header>
+      <PageHeader
+        title="회원가입"
+        description="비밀번호는 8자 이상으로 입력해 주세요."
+      />
       <div className="rounded-2xl border border-line bg-surface p-6">
         <AuthForm mode="signup" action={signupAction} />
       </div>

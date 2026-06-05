@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { logoutAction } from "../auth/actions";
+import { Badge } from "./Badge";
 
 export async function Header() {
   const session = await getSession();
@@ -19,11 +20,8 @@ export async function Header() {
           {session ? (
             <>
               <NavLink href="/my">내 예매</NavLink>
-              <span
-                className="ml-2 mr-1 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent"
-                data-testid="user-name"
-              >
-                {session.name}
+              <span data-testid="user-name" className="ml-2 mr-1">
+                <Badge variant="accent">{session.name}</Badge>
               </span>
               <form action={logoutAction}>
                 <button
