@@ -130,6 +130,29 @@ PostgreSQL 로 만든 좌석 예매 사이트
 
 ---
 
+## 웹 서비스와 DBMS 가 어떻게 연동되나요
+
+```
+브라우저
+   │  HTTP / FormData
+   ▼
+Next.js Server Action   ('use server')
+   │  함수 호출
+   ▼
+src/domain/*.ts         (SQL + 비즈니스 규칙)
+   │  pg.Pool / withTransaction
+   ▼
+PostgreSQL 16
+```
+
+- **Server Action** 이 요청 진입점 — 클라이언트가 함수처럼 호출합니다
+- **도메인 계층**이 SQL 과 트랜잭션 경계를 정의합니다
+- **pg 드라이버**가 PostgreSQL 과 직접 통신합니다
+
+> 별도 백엔드 프로세스(Express 등) 없이 한 프로젝트 안에서 풀스택을 처리합니다.
+
+---
+
 ## 왜 좌석 예매 도메인인가요
 
 과제 평가 항목이 **릴레이션 · 쿼리 · 트랜잭션** 세 가지였습니다.
