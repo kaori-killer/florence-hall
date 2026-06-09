@@ -44,3 +44,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# 발표·보고서 자료 (로컬 전용)
+/docs/
