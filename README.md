@@ -1,36 +1,36 @@
 # Florence Hall
 
-공연 좌석 예매 사이트. 데이터베이스 과목 과제로 만들었다.
+공연 좌석 예매 사이트입니다. 데이터베이스 과목 과제로 만들었습니다.
 
-같은 좌석을 거의 같은 시간에 두 사람이 누르면 어떻게 되는가? 이걸 시연해보고 싶어서 도메인을 좌석 예매로 잡았다. PostgreSQL 트랜잭션과 partial UNIQUE 인덱스로 한 명만 성공하게 만들고, 통합 테스트로 진짜 그렇게 동작하는지 매번 확인한다.
+같은 좌석을 거의 같은 시간에 두 사람이 누르면 어떻게 될까요? 이 시나리오를 시연해보고 싶어서 좌석 예매를 도메인으로 잡았습니다. PostgreSQL 트랜잭션과 partial UNIQUE 인덱스로 한 명만 성공하게 처리하고, 통합 테스트로 진짜 그렇게 동작하는지 매번 확인합니다.
 
-## 왜 좌석 예매 도메인?
+## 왜 좌석 예매 도메인을 골랐나요
 
-과제 평가 항목이 *릴레이션 · 쿼리 · 트랜잭션* 셋이었는데, 이 셋이 모두 자연스럽게 등장하는 가장 단순한 도메인이 좌석 예매라고 생각했다.
+과제 평가 항목이 *릴레이션 · 쿼리 · 트랜잭션* 셋이었는데, 이 셋이 모두 자연스럽게 등장하는 가장 단순한 도메인이 좌석 예매라고 생각했습니다.
 
-특히 트랜잭션은 *없으면 어떻게 깨지는지* 시연이 직관적인 게 좌석 예매다. "두 명이 동시에 같은 좌석을 누르면?" 이라는 시나리오가 일상적이라.
+특히 트랜잭션은 *없으면 어떻게 깨지는지* 시연하기가 직관적인 게 좌석 예매라고 봤습니다. "두 명이 동시에 같은 좌석을 누르면?" 이라는 시나리오가 일상적이니까요.
 
 ## 기술 스택
 
 - **Next.js 16** (App Router) · React 19 · TypeScript
 - **PostgreSQL 16**
-- DB는 `pg` 드라이버로 직접 — **ORM은 안 썼다.** 평가 항목이 "쿼리·트랜잭션을 어떻게 정의했는지"라서 ORM이 SQL을 가리면 어필이 안 된다.
-- 인증은 `bcryptjs` + HMAC-SHA256 쿠키 세션 (NextAuth 없이 직접)
+- DB는 `pg` 드라이버로 직접 — **ORM은 쓰지 않았습니다.** 평가 항목이 "쿼리·트랜잭션을 어떻게 정의했는가" 라서 ORM이 SQL을 가리면 어필이 어렵습니다.
+- 인증은 `bcryptjs` + HMAC-SHA256 쿠키 세션 (NextAuth 없이 직접 구현)
 - 테스트는 Vitest(도메인 통합) + Playwright(E2E)
 - 성능 측정은 강의에서 배운 `pgbench`
 - 스타일은 Tailwind v4 (토스 톤 컬러 토큰)
 
-별도 백엔드 프로세스는 두지 않았다. Next.js 16의 Server Actions로 풀스택을 한 프로젝트 안에서 다 했다.
+별도 백엔드 프로세스는 두지 않았습니다. Next.js 16의 Server Actions로 풀스택을 한 프로젝트 안에서 모두 처리했습니다.
 
 ## 데이터 모델
 
-테이블 3개: `users`, `performances`, `bookings`.
+테이블 3개입니다: `users`, `performances`, `bookings`.
 
-좌석을 별도 테이블로 두지 않고 `bookings` 행에 (`section`, `row_label`, `seat_number`)로 직접 박았다. 모든 공연이 같은 좌석 배치(A·B 섹션 × 3행 × 5번 = 30석)라는 가정이라 별도 좌석 마스터 테이블 없이 코드 상수(`src/lib/venue.ts`)로 충분하다.
+좌석을 별도 테이블로 두지 않고 `bookings` 행에 (`section`, `row_label`, `seat_number`) 로 직접 박았습니다. 모든 공연이 같은 좌석 배치(A·B 섹션 × 3행 × 5번 = 30석)라는 가정이라, 좌석 마스터는 별도 테이블 없이 코드 상수(`src/lib/venue.ts`)로 충분합니다.
 
-처음엔 5개 테이블(`users`, `performances`, `seats`, `bookings`, `booking_seats`)로 시작했는데, junction table까지 두니 발표할 때 "각 테이블이 왜 있는지" 설명이 길어졌다. 3개로 줄이니 한 줄로 정리된다.
+처음엔 5개 테이블(`users`, `performances`, `seats`, `bookings`, `booking_seats`) 로 시작했습니다. 그런데 junction table 까지 두니까 발표할 때 "각 테이블이 왜 있는지" 설명이 길어지더군요. 3개로 줄이니 한 줄로 정리됩니다.
 
-핵심은 이 인덱스 하나다.
+핵심은 이 인덱스 하나입니다.
 
 ```sql
 CREATE UNIQUE INDEX uniq_confirmed_seat
@@ -38,11 +38,11 @@ CREATE UNIQUE INDEX uniq_confirmed_seat
   WHERE status = 'CONFIRMED';
 ```
 
-활성 예매에만 적용되는 partial UNIQUE. 취소된 행은 `status = 'CANCELLED'` 가 되면서 인덱스에서 자동으로 빠지고, 같은 좌석을 다시 잡을 수 있게 된다. 한 줄로 "한 좌석 = 한 사람, 취소 시 풀림" 규칙을 표현한 셈.
+활성 예매에만 적용되는 partial UNIQUE 입니다. 취소된 행은 `status = 'CANCELLED'` 가 되면서 인덱스에서 자동으로 빠지고, 같은 좌석을 다시 잡을 수 있게 됩니다. 한 줄로 "한 좌석 = 한 사람, 취소 시 풀림" 규칙을 표현한 셈입니다.
 
 ## 예매 트랜잭션
 
-`src/domain/bookings.ts`. 좌석 잠금 → 충돌 검사 → 그룹 ID 발급 → 다중 행 INSERT 를 한 트랜잭션 안에서 처리한다.
+`src/domain/bookings.ts` 에 있습니다. 좌석 잠금 → 충돌 검사 → 그룹 ID 발급 → 다중 행 INSERT 를 한 트랜잭션 안에서 처리합니다.
 
 ```sql
 BEGIN;
@@ -50,7 +50,7 @@ BEGIN;
 -- 가격 조회
 SELECT price FROM performances WHERE id = $1;
 
--- 같은 공연의 활성 예매 행을 잠근다
+-- 같은 공연의 활성 예매 행을 잠급니다
 SELECT section, row_label, seat_number
   FROM bookings
  WHERE performance_id = $1 AND status = 'CONFIRMED'
@@ -68,9 +68,9 @@ SELECT ...;
 COMMIT;
 ```
 
-`SELECT ... FOR UPDATE` 가 두 번째 동시 트랜잭션을 대기시키고, 첫 트랜잭션이 커밋되면 두 번째는 이미 잡힌 좌석을 발견해서 자기 트랜잭션을 ROLLBACK 한다. partial UNIQUE 인덱스는 어떤 경로로든 중복이 끼어드는 걸 막는 마지막 안전망.
+`SELECT ... FOR UPDATE` 가 두 번째 동시 트랜잭션을 대기시키고, 첫 트랜잭션이 커밋되면 두 번째는 이미 잡힌 좌석을 발견해서 자기 트랜잭션을 ROLLBACK 합니다. partial UNIQUE 인덱스는 어떤 경로로든 중복이 끼어드는 걸 막아주는 마지막 안전망 역할입니다.
 
-말로만 "보장한다"고 적기엔 약하니 통합 테스트로 매번 검증한다.
+말로만 "보장한다" 고 적으면 약하니까 통합 테스트로 매번 검증합니다.
 
 ```ts
 // src/domain/bookings.test.ts
@@ -84,11 +84,11 @@ it("두 사용자가 동시에 같은 좌석을 잡으면 한쪽만 성공한다
 });
 ```
 
-`Promise.allSettled` 로 두 트랜잭션을 정말 동시에 띄우고, *정확히 하나만 성공하고 하나는 실패하는지* 매 테스트 빌드마다 확인한다.
+`Promise.allSettled` 로 두 트랜잭션을 정말 동시에 띄우고, *정확히 하나만 성공하고 하나는 실패하는지* 매 테스트 빌드마다 확인합니다.
 
 ## 성능 측정 (pgbench)
 
-강의에서 다룬 `pgbench` 로 워크로드를 측정했다. `bench/book_workload.sql` 에 예매 트랜잭션을 작성하고 시나리오별로 `-c`, `-T` 옵션을 바꿔가며 돌렸다.
+강의에서 다룬 `pgbench` 로 워크로드를 측정했습니다. `bench/book_workload.sql` 에 예매 트랜잭션을 작성하고 시나리오별로 `-c`, `-T` 옵션을 바꿔가며 실행했습니다.
 
 | 시나리오 | 클라이언트 | TPS | 평균 Latency |
 |---|---:|---:|---:|
@@ -96,28 +96,28 @@ it("두 사용자가 동시에 같은 좌석을 잡으면 한쪽만 성공한다
 | 동시성 (정상) | 10 | 10,691 | 0.88 ms |
 | 고부하 | 50 | 8,595 | 4.96 ms |
 
-`-c 1 → 10` 에서는 TPS 가 19% 늘었는데, `-c 50` 에서는 잠금 경합과 컨텍스트 스위칭 비용으로 오히려 떨어졌다. Latency 는 동시성에 거의 선형 비례. 
+`-c 1 → 10` 에서는 TPS 가 19% 늘었는데, `-c 50` 에서는 잠금 경합과 컨텍스트 스위칭 비용으로 오히려 떨어집니다. Latency 는 동시성에 거의 선형 비례합니다.
 
-흥미로웠던 건 인덱스 비교 결과. INSERT 위주 워크로드에서는 인덱스 ON 이 OFF 보다 *약간 느렸다*. 인덱스 유지 비용이 INSERT 마다 들어가서 그렇다. 실서비스는 SELECT 비중이 더 크니 결과가 반대로 나오겠지만, "인덱스 = 무조건 빠름" 이 아니라는 걸 실측으로 본 게 좋았다.
+흥미로웠던 부분은 인덱스 비교 결과였습니다. INSERT 위주 워크로드에서는 인덱스 ON 이 OFF 보다 *약간 느렸습니다*. 인덱스 유지 비용이 INSERT 마다 들어가서 그렇습니다. 실서비스는 SELECT 비중이 더 크니 결과가 반대로 나오겠지만, "인덱스 = 무조건 빠름" 이 아니라는 점을 실측으로 확인한 게 좋았습니다.
 
-자세한 결과와 분석은 [docs/report.md](docs/report.md) 에 정리했다.
+자세한 결과와 분석은 [docs/report.md](docs/report.md) 에 정리해두었습니다.
 
 ## 화면 흐름
 
-공연 목록 (`/`) → 상세 + 좌석 맵 (`/performances/[id]`) → 좌석 선택 → 예매 → 마이페이지 (`/my`) 에서 취소 가능. `/stats` 에서 점유율 / 결제 TOP 5 / 일별 추이 시각화.
+공연 목록(`/`) → 상세 + 좌석 맵(`/performances/[id]`) → 좌석 선택 → 예매 → 마이페이지(`/my`) 에서 취소 가능합니다. `/stats` 에서 점유율 · 결제 TOP 5 · 일별 추이를 시각화합니다.
 
-회원가입 / 로그인 / 로그아웃 은 `/auth/*` 에.
+회원가입 · 로그인 · 로그아웃은 `/auth/*` 에 있습니다.
 
 ## 실행 방법
 
-PostgreSQL 16 이 필요하다. macOS 기준:
+PostgreSQL 16 이 필요합니다. macOS 기준입니다.
 
 ```bash
 brew install postgresql@16
 brew services start postgresql@16
 ```
 
-DB · 사용자 · 스키마:
+DB · 사용자 · 스키마를 만듭니다.
 
 ```bash
 createuser -s florence -P        # 비밀번호: florence
@@ -126,14 +126,14 @@ psql -U florence -d florence -f db/schema.sql
 psql -U florence -d florence -f db/seed.sql
 ```
 
-`.env.local`:
+`.env.local` 을 작성합니다.
 
 ```
 DATABASE_URL=postgres://florence:florence@localhost:5432/florence
 SESSION_SECRET=anything-at-least-16-chars
 ```
 
-개발 서버:
+개발 서버를 실행합니다.
 
 ```bash
 pnpm install
@@ -155,7 +155,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e       # Playwright 7/7
 ```
 
-`.env.test`, `.env.e2e` 는 저장소에 포함되지 않았다. `.env.local` 과 비슷한 형식으로 만들고 DB 이름만 바꾸면 된다.
+`.env.test`, `.env.e2e` 는 저장소에 포함시키지 않았습니다. `.env.local` 과 동일한 형식으로 만들되 DB 이름만 바꾸시면 됩니다.
 
 ## 폴더 구조
 
@@ -171,10 +171,11 @@ e2e/           Playwright 시나리오
 bench/         pgbench 워크로드와 실행 스크립트
 docs/
   report.md    과제 결과보고서
+  slides.md    발표용 슬라이드 (Marp)
 ```
 
-원칙은 단순하다. `lib` 는 라이브러리 래퍼만, `domain` 은 SQL 과 비즈니스 규칙만, `app` 은 렌더링과 액션만. 한 컴포넌트에 다 몰지 않는다.
+원칙은 단순합니다. `lib` 는 라이브러리 래퍼만, `domain` 은 SQL 과 비즈니스 규칙만, `app` 은 렌더링과 액션만 담습니다. 한 컴포넌트에 여러 책임을 몰지 않으려고 했습니다.
 
 ## 한 줄 회고
 
-5개 테이블로 시작했다가 3개로 줄이는 과정에서 *정규화 과잉도 안티패턴이 될 수 있다*는 걸 직접 느꼈다. 그리고 ORM 없이 SQL 직접 쓰는 게 학습 단계에서는 훨씬 낫다. `EXPLAIN` 보기도 쉽고, 트랜잭션 경계를 명확히 표시하는 강제력이 생긴다.
+5개 테이블로 시작했다가 3개로 줄이는 과정에서 *정규화 과잉도 안티패턴이 될 수 있다* 는 점을 직접 느꼈습니다. 그리고 ORM 없이 SQL 을 직접 쓰는 게 학습 단계에서는 훨씬 낫다고 생각합니다. `EXPLAIN` 보기도 쉽고, 트랜잭션 경계를 명확히 표시하는 강제력이 생깁니다.
