@@ -30,7 +30,11 @@ export default async function MyPage() {
       ) : (
         <ul className="space-y-3" data-testid="my-bookings">
           {groups.map((g) => (
-            <li key={g.booking_group_id}>
+            <li
+              key={g.booking_group_id}
+              data-testid={`booking-${g.booking_group_id}`}
+              data-status={g.status}
+            >
               <BookingItem group={g} />
             </li>
           ))}
@@ -42,11 +46,7 @@ export default async function MyPage() {
 
 function BookingItem({ group }: { group: BookingGroup }) {
   return (
-    <article
-      data-testid={`booking-${group.booking_group_id}`}
-      data-status={group.status}
-      className="rounded-2xl border border-line bg-surface p-5 sm:p-6"
-    >
+    <article className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <h2 className="text-base font-bold tracking-tight text-foreground">
